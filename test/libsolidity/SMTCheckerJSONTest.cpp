@@ -49,21 +49,27 @@ bool SMTCheckerTest::run(ostream& _stream, string const& _linePrefix, bool const
 {
 	StandardCompiler compiler;
 
+	// Run the compiler and retrieve the smtlib2queries (1st run)
 	string versionPragma = "pragma solidity >=0.0;\n";
 	Json::Value input = buildJson(versionPragma);
 	Json::Value result = compiler.compile(input);
 
+	// This is the list of query hashes requested by the 1st run
 	vector<string> outHashes = hashesFromJson(result, "auxiliaryInputRequested", "smtlib2queries");
+
+	// This is the list of responses provided in the test
 	string auxInput("auxiliaryInput");
+	BOOST_CHECK(m_smtResponses.isMember(auxInput));
 	vector<string> inHashes = hashesFromJson(m_smtResponses, auxInput, "smtlib2responses");
 
+	// Ensure that the povided list matches the requested one
 	BOOST_CHECK_MESSAGE(
 		outHashes == inHashes,
 		"SMT query hashes differ: " + boost::algorithm::join(outHashes, ", ") + " x " + boost::algorithm::join(inHashes, ", ")
 	);
-	BOOST_CHECK(m_smtResponses.isMember(auxInput));
-	input[auxInput] = m_smtResponses[auxInput];
 
+	// Rerun the compiler with the provided hashed (2nd run)
+	input[auxInput] = m_smtResponses[auxInput];
 	Json::Value endResult = compiler.compile(input);
 
 	BOOST_CHECK(endResult.isMember("errors"));
